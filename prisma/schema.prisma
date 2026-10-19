@@ -200,12 +200,15 @@ model Ticket {
   usedById     String?
   usedBy       User?        @relation("TicketUsedBy", fields: [usedById], references: [id], onDelete: Restrict)
   printCount   Int          @default(0)
+  /** Pedido de impresión física (térmica). resto-kds imprime donde fisico=true. */
+  fisico       Boolean      @default(false)
   voidReason   String?
   voidedAt     DateTime?
   createdAt    DateTime     @default(now())
 
   @@index([eventId, status])
   @@index([orderId])
+  @@index([fisico])
 }
 
 model AuditLog {

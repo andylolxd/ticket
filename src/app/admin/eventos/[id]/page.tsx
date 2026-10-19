@@ -19,6 +19,7 @@ import {
   TicketTypeEditor,
 } from "@/app/admin/eventos/event-forms";
 import { Button } from "@/components/ui/button";
+import { mediaUrl } from "@/lib/media-url";
 import { formatArs, formatArsInput } from "@/lib/money";
 import { utcToMendozaLocalInput } from "@/lib/time";
 import { requireArea } from "@/server/auth/guard";
@@ -84,6 +85,16 @@ async function EventEditor({
           {STATUS_LABEL[event.status]} · /{event.slug}
         </p>
         {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
+        {event.status === "PUBLICADO" ? (
+          <p className="text-sm">
+            <Link
+              href={`/admin/ventas?evento=${event.id}`}
+              className="underline-offset-4 hover:underline"
+            >
+              Vender entradas (boletería)
+            </Link>
+          </p>
+        ) : null}
       </div>
 
       <section className="flex flex-col gap-3">
@@ -115,7 +126,7 @@ async function EventEditor({
           // La portada sale de una ruta propia; next/image no aplica a ese archivo generado.
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/media/${event.coverImageKey}`}
+            src={mediaUrl(event.coverImageKey)!}
             alt=""
             className="max-h-64 w-full rounded-lg object-cover"
           />
@@ -139,7 +150,7 @@ async function EventEditor({
               <li key={photo.id} className="flex flex-col gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`/api/media/${photo.imageKey}`}
+                  src={mediaUrl(photo.imageKey)!}
                   alt=""
                   className="aspect-square w-full rounded-lg object-cover"
                 />
@@ -198,7 +209,7 @@ async function EventEditor({
                   {artist.photoKey ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={`/api/media/${artist.photoKey}`}
+                      src={mediaUrl(artist.photoKey)!}
                       alt=""
                       className="h-24 w-24 rounded-lg object-cover"
                     />

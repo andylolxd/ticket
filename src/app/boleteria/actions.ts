@@ -95,10 +95,73 @@ export async function sellAtBoxOfficeAction(
   }
   revalidatePath("/");
   revalidatePath(`/eventos/${event.slug}`);
-  redirect(`/boleteria/orden/${created.orderId}`);
+  revalidatePath("/admin/ventas");
+  const saleArea = formData.get("saleArea");
+  const orderPath =
+    saleArea === "admin"
+      ? `/boleteria/orden/${created.orderId}?desde=admin&evento=${eventId}`
+      : `/boleteria/orden/${created.orderId}`;
+  redirect(orderPath);
 }
 
 function numberField(value: FormDataEntryValue | null): number {
   if (typeof value !== "string" || value.trim() === "") return 0;
   return Number(value);
+}
+
+/**
+ * Marca una entrada para impresión física (térmica vía resto-kds).
+ * `fisico=true` → el otro agente la imprime y puede bajarla a false.
+ */
+export async function markTicketFisicoAction(formData: FormData): Promise<void> {
+  await requireArea("boleteria");
+  const context = await requestContext();
+  const ticketId = formData.get("ticketId");
+  const orderId = formData.get("orderId");
+  const desde = formData.get("desde");
+  const evento = formData.get("evento");
+  if (!context.originOk || typeof ticketId !== "string" || typeof orderId !== "string") {
+    return;
+  }
+
+  await db.ticket.updateMany({
+    where: { id: ticketId, orderId, status: "VALIDO" },
+    data: { fisico: true },
+  });
+
+  revalidatePath(`/boleteria/orden/${orderId}`);
+  revalidatePath(`/admin/ventas/${orderId}`);
+  redirect(orderReturnPath(orderId, desde, evento));
+}
+
+/** Marca todas las entradas válidas de la orden para impresión física. */
+export async function markOrderTicketsFisicoAction(formData: FormData): Promise<void> {
+  await requireArea("boleteria");
+  const context = await requestContext();
+  const orderId = formData.get("orderId");
+  const desde = formData.get("desde");
+  const evento = formData.get("evento");
+  if (!context.originOk || typeof orderId !== "string") return;
+
+  await db.ticket.updateMany({
+    where: { orderId, status: "VALIDO" },
+    data: { fisico: true },
+  });
+
+  revalidatePath(`/boleteria/orden/${orderId}`);
+  revalidatePath(`/admin/ventas/${orderId}`);
+  redirect(orderReturnPath(orderId, desde, evento));
+}
+
+function orderReturnPath(
+  orderId: string,
+  desde: FormDataEntryValue | null,
+  evento: FormDataEntryValue | null,
+): string {
+  if (desde === "admin") {
+    const eventQs =
+      typeof evento === "string" && evento.length > 0 ? `&evento=${evento}` : "";
+    return `/boleteria/orden/${orderId}?desde=admin${eventQs}`;
+  }
+  return `/boleteria/orden/${orderId}`;
 }

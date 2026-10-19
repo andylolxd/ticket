@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import QRCode from "qrcode";
 
+import { IssuedTicketCard } from "@/components/issued-ticket-card";
 import { PublicHeader } from "@/components/public-header";
-import { TicketActions } from "@/components/ticket-actions";
 import { formatArs } from "@/lib/money";
 import { formatDateTime } from "@/lib/time";
 import { env } from "@/server/env";
@@ -59,6 +59,7 @@ async function Purchase({
     where: { id },
     include: {
       event: true,
+      items: true,
       tickets: { include: { ticketType: true }, orderBy: { createdAt: "asc" } },
     },
   });
@@ -68,6 +69,9 @@ async function Purchase({
       ...ticket,
       qr: await QRCode.toDataURL(ticketToken(ticket.id), { margin: 1, width: 220 }),
     })),
+  );
+  const priceByType = new Map(
+    order.items.map((item) => [item.ticketTypeId, item.unitPriceCents]),
   );
 
   return (
@@ -86,49 +90,29 @@ async function Purchase({
         </p>
       ) : null}
       {order.status === "PAGADA" || order.status === "REEMBOLSADA" ? (
-        <ul className="flex flex-col gap-4">
-          {tickets.map((ticket) => (
-            <li
+        <ul className="flex flex-col gap-5">
+          {tickets.map((ticket, index) => (
+            <IssuedTicketCard
               key={ticket.id}
-              className="flex flex-col items-start gap-3 rounded-lg border p-4"
-            >
-              <div className="flex flex-col gap-1">
-                <p className="font-medium">
-                  {ticket.ticketType.name} · {ticket.shortCode}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {ticket.status === "VALIDO"
-                    ? "Vigente"
-                    : ticket.status === "USADO"
-                      ? "Ya ingresó"
-                      : "Anulada"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDateTime(order.event.startsAt)} · {order.event.venue}
-                </p>
-              </div>
-              {ticket.status === "VALIDO" ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={ticket.qr}
-                    alt={`QR ${ticket.shortCode}`}
-                    className="h-40 w-40"
-                  />
-                  <TicketActions
-                    shareUrl={`${env.APP_URL}/compra/${order.id}`}
-                    ticket={{
-                      eventTitle: order.event.title,
-                      eventWhen: formatDateTime(order.event.startsAt),
-                      venue: order.event.venue,
-                      ticketTypeName: ticket.ticketType.name,
-                      shortCode: ticket.shortCode,
-                      qrDataUrl: ticket.qr,
-                    }}
-                  />
-                </>
-              ) : null}
-            </li>
+              eventTitle={order.event.title}
+              startsAt={order.event.startsAt}
+              venue={order.event.venue}
+              ticketTypeName={ticket.ticketType.name}
+              unitPriceCents={
+                priceByType.get(ticket.ticketTypeId) ?? ticket.ticketType.priceCents
+              }
+              shortCode={ticket.shortCode}
+              status={ticket.status}
+              buyerName={order.buyerName}
+              buyerEmail={order.buyerEmail}
+              buyerPhone={order.buyerPhone}
+              paymentMethod={order.paymentMethod}
+              qrDataUrl={ticket.status === "VALIDO" ? ticket.qr : null}
+              shareUrl={`${env.APP_URL}/compra/${order.id}`}
+              index={index + 1}
+              total={tickets.length}
+              showActions={ticket.status === "VALIDO"}
+            />
           ))}
         </ul>
       ) : null}

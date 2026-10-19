@@ -1,10 +1,20 @@
 export type TicketExportData = {
   eventTitle: string;
   eventWhen: string;
+  eventDate: string;
+  eventTime: string;
   venue: string;
   ticketTypeName: string;
+  priceLabel: string;
   shortCode: string;
   qrDataUrl: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string;
+  paymentLabel: string;
+  statusText: string;
+  index: number;
+  total: number;
 };
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -16,57 +26,177 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function drawField(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  value: string,
+) {
+  ctx.fillStyle = "#f4f4f5";
+  roundRect(ctx, x, y, w, h, 10);
+  ctx.fill();
+  ctx.fillStyle = "#71717a";
+  ctx.font = "600 11px system-ui, sans-serif";
+  ctx.fillText(label.toUpperCase(), x + 14, y + 22);
+  ctx.fillStyle = "#18181b";
+  ctx.font = "600 16px system-ui, sans-serif";
+  wrapText(ctx, value, x + 14, y + 46, w - 28, 20);
+}
+
+/** Misma ficha que `IssuedTicketCard` en pantalla. */
 export async function renderTicketCanvas(
   data: TicketExportData,
 ): Promise<HTMLCanvasElement> {
-  const width = 720;
-  const height = 960;
+  const width = 760;
+  const height = 1180;
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No se pudo crear el lienzo");
 
-  ctx.fillStyle = "#f7f4ef";
+  // Fondo / borde de tarjeta
+  ctx.fillStyle = "#e4e4e7";
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#1a1a1a";
-  ctx.fillRect(0, 0, width, 12);
-  ctx.fillRect(0, height - 12, width, 12);
+  ctx.fillStyle = "#ffffff";
+  roundRect(ctx, 16, 16, width - 32, height - 32, 18);
+  ctx.fill();
 
-  ctx.fillStyle = "#1a1a1a";
-  ctx.font = "600 36px Georgia, 'Times New Roman', serif";
-  wrapText(ctx, data.eventTitle, 48, 80, width - 96, 44);
+  // Header sky-950
+  ctx.fillStyle = "#082f49";
+  roundRect(ctx, 16, 16, width - 32, 96, 18);
+  ctx.fill();
+  ctx.fillRect(16, 70, width - 32, 42);
 
-  ctx.fillStyle = "#444";
-  ctx.font = "400 24px system-ui, sans-serif";
-  ctx.fillText(data.eventWhen, 48, 200);
-  wrapText(ctx, data.venue, 48, 240, width - 96, 32);
+  ctx.fillStyle = "#bae6fd";
+  ctx.font = "600 12px system-ui, sans-serif";
+  ctx.fillText("BOLETERÍA MENDOZA DEL OESTE", 40, 48);
+  ctx.fillStyle = "#e0f2fe";
+  ctx.font = "500 15px system-ui, sans-serif";
+  ctx.fillText(`Entrada ${data.index} de ${data.total}`, 40, 74);
 
-  ctx.strokeStyle = "#d4cfc6";
+  // Código badge
+  const code = data.shortCode;
+  ctx.font = "600 15px ui-monospace, monospace";
+  const codeW = Math.max(ctx.measureText(code).width + 28, 90);
+  const codeX = width - 40 - codeW;
+  ctx.fillStyle = "rgba(255,255,255,0.12)";
+  roundRect(ctx, codeX, 44, codeW, 36, 8);
+  ctx.fill();
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(code, codeX + 14, 68);
+
+  // Título + estado
+  let y = 140;
+  ctx.fillStyle = "#18181b";
+  ctx.font = "700 28px system-ui, sans-serif";
+  const titleEnd = wrapText(ctx, data.eventTitle, 40, y, width - 80, 34);
+  y = titleEnd + 28;
+  ctx.fillStyle = "#52525b";
+  ctx.font = "400 15px system-ui, sans-serif";
+  ctx.fillText(data.statusText, 40, y);
+  y += 28;
+
+  // Campos en grilla 2 columnas
+  const gap = 12;
+  const colW = (width - 80 - gap) / 2;
+  const rowH = 72;
+  drawField(ctx, 40, y, colW, rowH, "Fecha", data.eventDate);
+  drawField(ctx, 40 + colW + gap, y, colW, rowH, "Hora", `${data.eventTime} hs`);
+  y += rowH + gap;
+  drawField(ctx, 40, y, width - 80, rowH, "Lugar", data.venue);
+  y += rowH + gap;
+  drawField(ctx, 40, y, colW, rowH, "Tipo de entrada", data.ticketTypeName);
+  drawField(ctx, 40 + colW + gap, y, colW, rowH, "Precio", data.priceLabel);
+  y += rowH + 28;
+
+  // Separador + titular
+  ctx.strokeStyle = "#f4f4f5";
   ctx.beginPath();
-  ctx.moveTo(48, 300);
-  ctx.lineTo(width - 48, 300);
+  ctx.moveTo(40, y);
+  ctx.lineTo(width - 40, y);
   ctx.stroke();
+  y += 28;
 
-  ctx.fillStyle = "#1a1a1a";
-  ctx.font = "600 28px system-ui, sans-serif";
-  ctx.fillText(data.ticketTypeName, 48, 360);
-  ctx.font = "500 22px ui-monospace, monospace";
-  ctx.fillText(`Código ${data.shortCode}`, 48, 400);
+  ctx.fillStyle = "#71717a";
+  ctx.font = "600 11px system-ui, sans-serif";
+  ctx.fillText("TITULAR", 40, y);
+  y += 24;
+  ctx.fillStyle = "#18181b";
+  ctx.font = "600 18px system-ui, sans-serif";
+  ctx.fillText(data.buyerName, 40, y);
+  y += 24;
+  ctx.fillStyle = "#52525b";
+  ctx.font = "400 14px system-ui, sans-serif";
+  ctx.fillText(`${data.buyerEmail} · ${data.buyerPhone}`, 40, y);
+  y += 22;
+  ctx.fillStyle = "#71717a";
+  ctx.fillText(`Pago: ${data.paymentLabel}`, 40, y);
+  y += 28;
+
+  // Separador + QR
+  ctx.strokeStyle = "#f4f4f5";
+  ctx.beginPath();
+  ctx.moveTo(40, y);
+  ctx.lineTo(width - 40, y);
+  ctx.stroke();
+  y += 24;
 
   const qr = await loadImage(data.qrDataUrl);
-  const qrSize = 320;
-  const qrX = (width - qrSize) / 2;
-  const qrY = 460;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(qrX - 16, qrY - 16, qrSize + 32, qrSize + 32);
-  ctx.drawImage(qr, qrX, qrY, qrSize, qrSize);
+  const qrSize = 200;
+  const qrPad = 10;
+  const box = qrSize + qrPad * 2;
+  ctx.fillStyle = "#ffffff";
+  ctx.strokeStyle = "#e4e4e7";
+  roundRect(ctx, 40, y, box, box, 10);
+  ctx.fill();
+  ctx.stroke();
+  ctx.drawImage(qr, 40 + qrPad, y + qrPad, qrSize, qrSize);
 
-  ctx.fillStyle = "#666";
-  ctx.font = "400 18px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Mostrá este QR en la entrada", width / 2, 860);
-  ctx.textAlign = "start";
+  const textX = 40 + box + 24;
+  const textW = width - textX - 40;
+  ctx.fillStyle = "#18181b";
+  ctx.font = "600 16px system-ui, sans-serif";
+  ctx.fillText("Acceso al evento", textX, y + 28);
+  ctx.fillStyle = "#52525b";
+  ctx.font = "400 14px system-ui, sans-serif";
+  wrapText(
+    ctx,
+    `Presentá este QR (en pantalla o impreso) en la puerta. El código ${data.shortCode} identifica esta entrada; no lo compartas si no querés ceder el ingreso.`,
+    textX,
+    y + 56,
+    textW,
+    20,
+  );
+  wrapText(
+    ctx,
+    "Llegá con tiempo: las puertas suelen cerrar al inicio del show.",
+    textX,
+    y + 140,
+    textW,
+    20,
+  );
 
   return canvas;
 }
@@ -78,7 +208,7 @@ function wrapText(
   y: number,
   maxWidth: number,
   lineHeight: number,
-) {
+): number {
   const words = text.split(/\s+/);
   let line = "";
   let cursorY = y;
@@ -92,7 +222,11 @@ function wrapText(
       line = test;
     }
   }
-  if (line) ctx.fillText(line, x, cursorY);
+  if (line) {
+    ctx.fillText(line, x, cursorY);
+    return cursorY;
+  }
+  return cursorY - lineHeight;
 }
 
 export async function ticketToPngBlob(data: TicketExportData): Promise<Blob> {
@@ -107,7 +241,7 @@ export async function ticketToPngBlob(data: TicketExportData): Promise<Blob> {
 
 export async function ticketToPdfBlob(data: TicketExportData): Promise<Blob> {
   const canvas = await renderTicketCanvas(data);
-  const jpeg = canvas.toDataURL("image/jpeg", 0.92);
+  const jpeg = canvas.toDataURL("image/jpeg", 0.94);
   const base64 = jpeg.split(",")[1];
   if (!base64) throw new Error("No se pudo exportar PDF");
   return jpegDataUrlToPdfBlob(base64, canvas.width, canvas.height);
@@ -129,9 +263,7 @@ function jpegDataUrlToPdfBlob(
 
   const encoder = new TextEncoder();
   add("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
-  add(
-    `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`,
-  );
+  add(`2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`);
   add(
     `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents 4 0 R /Resources << /XObject << /Im0 5 0 R >> >> >>\nendobj\n`,
   );

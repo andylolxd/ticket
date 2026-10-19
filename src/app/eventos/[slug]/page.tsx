@@ -5,6 +5,7 @@ import { connection } from "next/server";
 
 import { PublicHeader } from "@/components/public-header";
 import { CheckoutForm } from "./checkout-form";
+import { mediaUrl } from "@/lib/media-url";
 import { formatArs } from "@/lib/money";
 import { formatDateTime } from "@/lib/time";
 import { db } from "@/server/db";
@@ -53,7 +54,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
       {event.coverImageKey ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/api/media/${event.coverImageKey}`}
+          src={mediaUrl(event.coverImageKey)!}
           alt=""
           className="max-h-80 w-full rounded-lg object-cover"
         />
@@ -134,7 +135,7 @@ async function EventDetail({ params }: { params: Promise<{ slug: string }> }) {
                   {artist.photoKey ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={`/api/media/${artist.photoKey}`}
+                      src={mediaUrl(artist.photoKey)!}
                       alt=""
                       className="h-16 w-16 rounded-md object-cover"
                     />

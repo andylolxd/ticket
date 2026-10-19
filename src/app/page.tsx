@@ -6,6 +6,7 @@ import { ArtistsCarousel } from "@/components/artists-carousel";
 import { EventGallery } from "@/components/event-gallery";
 import { HowItWorks } from "@/components/how-it-works";
 import { PublicHeader } from "@/components/public-header";
+import { mediaUrl } from "@/lib/media-url";
 import { formatArs } from "@/lib/money";
 import { formatShortDate, formatTime } from "@/lib/time";
 import { db } from "@/server/db";
@@ -66,7 +67,7 @@ async function Catalog() {
     event.lineup.map((artist) => ({
       id: artist.id,
       name: artist.name,
-      photoSrc: artist.photoKey ? `/api/media/${artist.photoKey}` : null,
+      photoSrc: mediaUrl(artist.photoKey),
       eventSlug: event.slug,
       eventTitle: event.title,
     })),
@@ -124,7 +125,7 @@ function EventBlock({
   featured?: boolean;
 }) {
   const galleryImages = event.gallery.map((photo) => ({
-    src: `/api/media/${photo.imageKey}`,
+    src: mediaUrl(photo.imageKey)!,
     alt: `Foto de ${event.title}`,
   }));
 
@@ -158,7 +159,7 @@ function EventBanner({
         {event.coverImageKey ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={`/api/media/${event.coverImageKey}`}
+            src={mediaUrl(event.coverImageKey)!}
             alt=""
             className="absolute inset-0 h-full w-full object-cover object-center"
           />

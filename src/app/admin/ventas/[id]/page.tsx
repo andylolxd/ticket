@@ -92,9 +92,23 @@ async function OrderAdmin({
           </li>
         ))}
       </ul>
-      <Link href="/admin/ventas" className="text-sm underline-offset-4 hover:underline">
-        Volver a ventas
-      </Link>
+      <div className="flex flex-wrap gap-4 text-sm">
+        <Link
+          href={`/admin/ventas?evento=${order.eventId}`}
+          className="underline-offset-4 hover:underline"
+        >
+          Volver a ventas del evento
+        </Link>
+        {(order.origin === "BOLETERIA" || order.origin === "CORTESIA") &&
+        order.status === "PAGADA" ? (
+          <Link
+            href={`/boleteria/orden/${order.id}?desde=admin&evento=${order.eventId}`}
+            className="underline-offset-4 hover:underline"
+          >
+            Ver QR / imprimir
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }

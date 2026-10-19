@@ -39,10 +39,11 @@ export function TicketActions({ ticket, shareUrl }: Props) {
   }, [open]);
 
   const shareText = [
-    `Entrada: ${ticket.eventTitle}`,
-    ticket.eventWhen,
-    ticket.venue,
-    `${ticket.ticketTypeName} · ${ticket.shortCode}`,
+    `Entrada ${ticket.index}/${ticket.total}: ${ticket.eventTitle}`,
+    `Fecha: ${ticket.eventDate} · ${ticket.eventTime} hs`,
+    `Lugar: ${ticket.venue}`,
+    `${ticket.ticketTypeName} · ${ticket.priceLabel} · ${ticket.shortCode}`,
+    `Titular: ${ticket.buyerName}`,
     shareUrl,
   ].join("\n");
 
