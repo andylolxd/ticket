@@ -19,9 +19,8 @@ function createStorage(): StorageService {
       env.SUPABASE_MEDIA_UPLOAD_SECRET,
     );
   }
-  return new LocalStorageService(
-    path.resolve(process.cwd(), env.UPLOAD_DIR ?? "data/uploads"),
-  );
+  // Ruta estática bajo data/ para que Turbopack/Vercel no tracee todo el repo.
+  return new LocalStorageService(path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "uploads"));
 }
 
 export const storage = createStorage();
