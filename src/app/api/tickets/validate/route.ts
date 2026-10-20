@@ -4,14 +4,21 @@ import { decideAccess } from "@/server/auth/access";
 import { consumeLimit } from "@/server/auth/rate-limit";
 import { prismaRateLimitStore } from "@/server/auth/rate-limit-store";
 import { getSession } from "@/server/auth/session";
-import { sameOrigin } from "@/server/auth/origin";
+import { originAllowed } from "@/server/auth/origin";
 import { writeAudit } from "@/server/audit";
 import { db } from "@/server/db";
 import { env } from "@/server/env";
 import { readTicketToken } from "@/server/orders/qr";
 
 export async function POST(request: Request) {
-  if (!sameOrigin(request.headers.get("origin"), env.APP_URL)) {
+  if (
+    !originAllowed(
+      request.headers.get("origin"),
+      env.APP_URL,
+      request.headers.get("x-forwarded-host") ?? request.headers.get("host"),
+      request.headers.get("x-forwarded-proto"),
+    )
+  ) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const session = await getSession();
