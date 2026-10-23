@@ -132,9 +132,11 @@ export function IssuedTicketCard({
             Titular
           </p>
           <p className="mt-1 font-medium text-zinc-900">{buyerName}</p>
-          <p className="text-sm text-zinc-600">
-            {buyerEmail} · {buyerPhone}
-          </p>
+          {buyerEmail || buyerPhone ? (
+            <p className="text-sm text-zinc-600">
+              {[buyerEmail, buyerPhone].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
           <p className="mt-1 text-sm text-zinc-500">Pago: {payment}</p>
         </div>
 

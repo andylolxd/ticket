@@ -147,10 +147,13 @@ export async function renderTicketCanvas(
   ctx.font = "600 18px system-ui, sans-serif";
   ctx.fillText(data.buyerName, 40, y);
   y += 24;
-  ctx.fillStyle = "#52525b";
-  ctx.font = "400 14px system-ui, sans-serif";
-  ctx.fillText(`${data.buyerEmail} · ${data.buyerPhone}`, 40, y);
-  y += 22;
+  const contact = [data.buyerEmail, data.buyerPhone].filter(Boolean).join(" · ");
+  if (contact) {
+    ctx.fillStyle = "#52525b";
+    ctx.font = "400 14px system-ui, sans-serif";
+    ctx.fillText(contact, 40, y);
+    y += 22;
+  }
   ctx.fillStyle = "#71717a";
   ctx.fillText(`Pago: ${data.paymentLabel}`, 40, y);
   y += 28;

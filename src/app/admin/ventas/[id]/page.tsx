@@ -53,8 +53,15 @@ async function OrderAdmin({
       <div>
         <h2 className="text-lg font-medium">{order.buyerName}</h2>
         <p className="text-sm text-muted-foreground">
-          {order.event.title} · {order.status} · {order.buyerEmail} · {order.buyerPhone} ·{" "}
-          {formatArs(order.totalCents)}
+          {[
+            order.event.title,
+            order.status,
+            order.buyerEmail,
+            order.buyerPhone,
+            formatArs(order.totalCents),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         {notice ? <p className="mt-2 text-sm">{notice}</p> : null}
       </div>

@@ -34,9 +34,14 @@ export function SaleForm({
           defaultValue={0}
         />
       ))}
-      <Field label="Nombre" name="buyerName" required />
-      <Field label="Email" name="buyerEmail" type="email" required />
-      <Field label="Teléfono" name="buyerPhone" type="tel" required />
+      <Field label="Nombre (opcional)" name="buyerName" maxLength={80} />
+      <Field
+        label="Email (opcional)"
+        name="buyerEmail"
+        type="email"
+        hint="Si lo completás, se envían las entradas por correo."
+      />
+      <Field label="Teléfono (opcional)" name="buyerPhone" type="tel" />
       <label className="flex flex-col gap-1 text-sm" htmlFor="paymentMethod">
         <span className="font-medium">Pago</span>
         <select

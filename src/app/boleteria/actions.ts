@@ -29,14 +29,19 @@ export async function sellAtBoxOfficeAction(
   if (!courtesy && method !== "EFECTIVO" && method !== "TRANSFERENCIA") {
     return { error: "Elegí efectivo o transferencia." };
   }
-  const buyer = z
-    .object({
-      name: z.string().trim().min(2).max(80),
-      email: z.email().max(200),
-    })
-    .safeParse({ name: formData.get("buyerName"), email: formData.get("buyerEmail") });
-  const phone = normalizePhone(String(formData.get("buyerPhone") ?? ""));
-  if (!buyer.success || !phone) return { error: "Revisá nombre, email y teléfono." };
+  const rawName = String(formData.get("buyerName") ?? "").trim();
+  const rawEmail = String(formData.get("buyerEmail") ?? "").trim();
+  const rawPhone = String(formData.get("buyerPhone") ?? "").trim();
+  if (rawName.length > 80) return { error: "El nombre es demasiado largo." };
+  if (rawEmail && !z.email().max(200).safeParse(rawEmail).success) {
+    return { error: "El email no es válido." };
+  }
+  const phone = rawPhone ? normalizePhone(rawPhone) : "";
+  if (phone === null) return { error: "El teléfono no es válido." };
+  const buyer = {
+    name: rawName || "Público general",
+    email: rawEmail,
+  };
 
   const eventId = formData.get("eventId");
   if (typeof eventId !== "string") return { error: "Elegí un evento." };
@@ -72,8 +77,8 @@ export async function sellAtBoxOfficeAction(
       : "EFECTIVO";
   const created = await createPaidOrder({
     eventId,
-    buyerName: buyer.data.name,
-    buyerEmail: buyer.data.email,
+    buyerName: buyer.name,
+    buyerEmail: buyer.email,
     buyerPhone: phone,
     lines,
     now,
@@ -83,15 +88,17 @@ export async function sellAtBoxOfficeAction(
     ip: context.ip,
   });
   if ("error" in created) return created;
-  try {
-    await sendTicketEmail({
-      to: buyer.data.email,
-      eventTitle: event.title,
-      orderId: created.orderId,
-      shortCodes: created.tickets.map((ticket) => ticket.shortCode),
-    });
-  } catch (error) {
-    console.error("No se pudo enviar el email de la boletería", error);
+  if (buyer.email) {
+    try {
+      await sendTicketEmail({
+        to: buyer.email,
+        eventTitle: event.title,
+        orderId: created.orderId,
+        shortCodes: created.tickets.map((ticket) => ticket.shortCode),
+      });
+    } catch (error) {
+      console.error("No se pudo enviar el email de la boletería", error);
+    }
   }
   revalidatePath("/");
   revalidatePath(`/eventos/${event.slug}`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -15,28 +15,53 @@ type Props = {
   shareUrl: string;
 };
 
+const noopSubscribe = () => () => {};
+
 export function TicketActions({ ticket, shareUrl }: Props) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState<"pdf" | "png" | "share" | null>(null);
+  const [busy, setBusy] = useState<"pdf" | "png" | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const canNativeShare = useSyncExternalStore(
+    noopSubscribe,
+    () => typeof navigator.share === "function",
+    () => false,
+  );
+  const [file, setFile] = useState<File | null>(null);
   const panelId = useId();
-  const panelRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const preparingRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    const onPointer = (event: MouseEvent) => {
-      if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
+    const onPointer = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("pointerdown", onPointer);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("pointerdown", onPointer);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
+
+  // navigator.share solo funciona dentro del gesto del usuario: la imagen se arma
+  // al abrir el menú para no tener que esperarla después del toque.
+  useEffect(() => {
+    if (!open || !canNativeShare || file || preparingRef.current) return;
+    preparingRef.current = true;
+    ticketToPngBlob(ticket)
+      .then((blob) =>
+        setFile(new File([blob], `entrada-${ticket.shortCode}.png`, { type: "image/png" })),
+      )
+      .catch(() => undefined)
+      .finally(() => {
+        preparingRef.current = false;
+      });
+  }, [open, canNativeShare, file, ticket]);
 
   const shareText = [
     `Entrada ${ticket.index}/${ticket.total}: ${ticket.eventTitle}`,
@@ -44,8 +69,30 @@ export function TicketActions({ ticket, shareUrl }: Props) {
     `Lugar: ${ticket.venue}`,
     `${ticket.ticketTypeName} · ${ticket.priceLabel} · ${ticket.shortCode}`,
     `Titular: ${ticket.buyerName}`,
-    shareUrl,
   ].join("\n");
+  const fullText = `${shareText}\n${shareUrl}`;
+  const subject = `Entrada ${ticket.shortCode} · ${ticket.eventTitle}`;
+  const text = encodeURIComponent(fullText);
+  const url = encodeURIComponent(shareUrl);
+
+  const links = [
+    { label: "WhatsApp", href: `https://wa.me/?text=${text}` },
+    {
+      label: "Telegram",
+      href: `https://t.me/share/url?url=${url}&text=${encodeURIComponent(shareText)}`,
+    },
+    { label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${url}` },
+    { label: "X (Twitter)", href: `https://twitter.com/intent/tweet?text=${text}` },
+    {
+      label: "Gmail",
+      href: `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${text}`,
+    },
+    {
+      label: "Correo",
+      href: `mailto:?subject=${encodeURIComponent(subject)}&body=${text}`,
+      sameTab: true,
+    },
+  ];
 
   async function download(kind: "pdf" | "png") {
     setError("");
@@ -65,65 +112,33 @@ export function TicketActions({ ticket, shareUrl }: Props) {
     }
   }
 
-  async function shareNative() {
+  function shareNative() {
     setError("");
-    setBusy("share");
-    try {
-      const blob = await ticketToPngBlob(ticket);
-      const file = new File([blob], `entrada-${ticket.shortCode}.png`, {
-        type: "image/png",
+    const withFile = file && navigator.canShare?.({ files: [file] });
+    const data: ShareData = withFile
+      ? { title: ticket.eventTitle, text: fullText, files: [file] }
+      : { title: ticket.eventTitle, text: shareText, url: shareUrl };
+    navigator
+      .share(data)
+      .then(() => setOpen(false))
+      .catch((err: Error) => {
+        if (err.name !== "AbortError") setError("No se pudo abrir el menú de compartir.");
       });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: ticket.eventTitle,
-          text: shareText,
-          files: [file],
-        });
-      } else if (navigator.share) {
-        await navigator.share({
-          title: ticket.eventTitle,
-          text: shareText,
-          url: shareUrl,
-        });
-      } else {
-        setOpen(true);
-      }
-    } catch (err) {
-      if ((err as Error).name !== "AbortError") {
-        setError("No se pudo compartir.");
-      }
-    } finally {
-      setBusy(null);
+  }
+
+  async function copyText() {
+    setError("");
+    try {
+      await navigator.clipboard.writeText(fullText);
+      setNotice("Copiado. Pegalo donde quieras.");
+      setTimeout(() => setNotice(""), 2500);
+    } catch {
+      setError("No se pudo copiar.");
     }
   }
 
-  function openWhatsApp() {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-    setOpen(false);
-  }
-
-  function openGmail() {
-    const subject = `Entrada ${ticket.shortCode} · ${ticket.eventTitle}`;
-    window.open(
-      `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(shareText)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-    setOpen(false);
-  }
-
-  function openMailto() {
-    const subject = `Entrada ${ticket.shortCode} · ${ticket.eventTitle}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(shareText)}`;
-    setOpen(false);
-  }
-
   return (
-    <div className="relative flex w-full flex-col gap-2 print:hidden">
+    <div ref={rootRef} className="flex w-full flex-col gap-2 print:hidden">
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -147,7 +162,6 @@ export function TicketActions({ ticket, shareUrl }: Props) {
           type="button"
           variant="secondary"
           size="sm"
-          disabled={busy !== null}
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((value) => !value)}
@@ -158,43 +172,44 @@ export function TicketActions({ ticket, shareUrl }: Props) {
 
       {open ? (
         <div
-          ref={panelRef}
           id={panelId}
-          role="menu"
-          className="absolute top-full left-0 z-20 mt-2 w-64 rounded-xl border border-border bg-background p-2 shadow-lg"
+          className="w-full rounded-xl border border-border bg-background p-2 shadow-sm sm:max-w-sm"
         >
-          <p className="px-2 py-1.5 text-xs text-muted-foreground">
-            Elegí dónde compartir
-          </p>
-          <ShareItem label="WhatsApp" onClick={openWhatsApp} />
-          <ShareItem label="Gmail" onClick={openGmail} />
-          <ShareItem label="Correo" onClick={openMailto} />
-          {typeof navigator !== "undefined" && "share" in navigator ? (
-            <ShareItem
-              label="Más opciones…"
-              onClick={() => {
-                setOpen(false);
-                void shareNative();
-              }}
-            />
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">Elegí dónde compartir</p>
+          {canNativeShare ? (
+            <button
+              type="button"
+              className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium hover:bg-muted"
+              onClick={shareNative}
+            >
+              Apps del teléfono{file ? " (con imagen)" : "…"}
+            </button>
           ) : null}
+          <div className="grid grid-cols-2 gap-1">
+            {links.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                target={link.sameTab ? undefined : "_blank"}
+                rel="noopener noreferrer"
+                className="flex items-center rounded-lg px-3 py-2.5 text-sm hover:bg-muted"
+              >
+                {link.label}
+              </a>
+            ))}
+            <button
+              type="button"
+              className="flex items-center rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"
+              onClick={copyText}
+            >
+              Copiar texto
+            </button>
+          </div>
         </div>
       ) : null}
 
+      {notice ? <p className="text-sm text-emerald-700">{notice}</p> : null}
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
     </div>
-  );
-}
-
-function ShareItem({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm hover:bg-muted"
-      onClick={onClick}
-    >
-      {label}
-    </button>
   );
 }
