@@ -49,19 +49,26 @@ export function TicketActions({ ticket, shareUrl }: Props) {
   }, [open]);
 
   // navigator.share solo funciona dentro del gesto del usuario: la imagen se arma
-  // al abrir el menú para no tener que esperarla después del toque.
+  // cuando el boleto entra en pantalla para no tener que esperarla después del toque.
   useEffect(() => {
-    if (!open || !canNativeShare || file || preparingRef.current) return;
-    preparingRef.current = true;
-    ticketToPngBlob(ticket)
-      .then((blob) =>
-        setFile(new File([blob], `entrada-${ticket.shortCode}.png`, { type: "image/png" })),
-      )
-      .catch(() => undefined)
-      .finally(() => {
-        preparingRef.current = false;
-      });
-  }, [open, canNativeShare, file, ticket]);
+    const node = rootRef.current;
+    if (!canNativeShare || file || !node) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting) || preparingRef.current) return;
+      preparingRef.current = true;
+      observer.disconnect();
+      ticketToPngBlob(ticket)
+        .then((blob) =>
+          setFile(new File([blob], `entrada-${ticket.shortCode}.png`, { type: "image/png" })),
+        )
+        .catch(() => undefined)
+        .finally(() => {
+          preparingRef.current = false;
+        });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [canNativeShare, file, ticket]);
 
   const shareText = [
     `Entrada ${ticket.index}/${ticket.total}: ${ticket.eventTitle}`,
@@ -122,7 +129,7 @@ export function TicketActions({ ticket, shareUrl }: Props) {
       .share(data)
       .then(() => setOpen(false))
       .catch((err: Error) => {
-        if (err.name !== "AbortError") setError("No se pudo abrir el menú de compartir.");
+        if (err.name !== "AbortError") setOpen(true);
       });
   }
 
@@ -164,7 +171,7 @@ export function TicketActions({ ticket, shareUrl }: Props) {
           size="sm"
           aria-expanded={open}
           aria-controls={panelId}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => (canNativeShare ? shareNative() : setOpen((value) => !value))}
         >
           Compartir
         </Button>
