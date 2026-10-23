@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { ArtistsCarousel } from "@/components/artists-carousel";
 import { EventGallery } from "@/components/event-gallery";
 import { HowItWorks } from "@/components/how-it-works";
+import { OrganizerContactSection } from "@/components/organizer-contact-section";
 import { PublicHeader } from "@/components/public-header";
 import { mediaUrl } from "@/lib/media-url";
 import { formatArs } from "@/lib/money";
@@ -26,6 +27,7 @@ export default function Home() {
       >
         <Catalog />
       </Suspense>
+      <OrganizerContactSection />
     </>
   );
 }
@@ -82,7 +84,7 @@ async function Catalog() {
   }
 
   return (
-    <main className="flex w-full flex-1 flex-col pb-16">
+    <main className="flex w-full flex-1 flex-col">
       {artists.length > 0 ? (
         <div className="border-b border-zinc-200 bg-white px-5 py-10 sm:px-8 sm:py-12">
           <div className="mx-auto w-full max-w-6xl">
@@ -161,6 +163,8 @@ function EventBanner({
           <img
             src={mediaUrl(event.coverImageKey)!}
             alt=""
+            loading={featured ? "eager" : "lazy"}
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
         ) : (

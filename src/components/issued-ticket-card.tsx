@@ -3,19 +3,7 @@ import { TicketActions } from "@/components/ticket-actions";
 import { Button } from "@/components/ui/button";
 import { formatArs } from "@/lib/money";
 import { formatDate, formatTime } from "@/lib/time";
-
-const PAYMENT_LABEL: Record<string, string> = {
-  EFECTIVO: "Efectivo",
-  TRANSFERENCIA: "Transferencia",
-  MERCADO_PAGO: "Mercado Pago",
-  CORTESIA: "Cortesía",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  VALIDO: "Válida — mostrar QR en la puerta",
-  USADO: "Ya ingresó",
-  ANULADO: "Entrada anulada",
-};
+import { PAYMENT_LABEL, STATUS_LABEL, ticketExportData } from "@/lib/ticket-view";
 
 type Props = {
   eventTitle: string;
@@ -190,25 +178,22 @@ export function IssuedTicketCard({
             {qrDataUrl ? (
               <TicketActions
                 shareUrl={shareUrl}
-                ticket={{
+                ticket={ticketExportData({
                   eventTitle,
-                  eventWhen: `${whenDate} · ${whenTime}`,
-                  eventDate: whenDate,
-                  eventTime: whenTime,
+                  startsAt,
                   venue,
                   ticketTypeName,
-                  priceLabel:
-                    unitPriceCents === 0 ? "Cortesía" : formatArs(unitPriceCents),
+                  unitPriceCents,
                   shortCode,
-                  qrDataUrl,
+                  status,
                   buyerName,
                   buyerEmail,
                   buyerPhone,
-                  paymentLabel: payment,
-                  statusText,
+                  paymentMethod,
+                  qrDataUrl,
                   index,
                   total,
-                }}
+                })}
               />
             ) : null}
           </div>

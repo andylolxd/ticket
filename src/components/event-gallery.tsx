@@ -58,6 +58,8 @@ export function EventGallery({ images }: { images: GalleryImage[] }) {
               <img
                 src={item.src}
                 alt={item.alt}
+                loading="lazy"
+                decoding="async"
                 className="aspect-square h-full w-full object-cover object-center"
               />
             </figure>

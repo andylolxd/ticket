@@ -6,13 +6,15 @@ import QRCode from "qrcode";
 import { PrintButton } from "../print-button";
 import { markOrderTicketsFisicoAction } from "@/app/boleteria/actions";
 import { IssuedTicketCard } from "@/components/issued-ticket-card";
+import { ShareAllTickets } from "@/components/share-all-tickets";
 import { Button } from "@/components/ui/button";
 import { formatArs } from "@/lib/money";
 import { formatDateTime } from "@/lib/time";
+import { ticketExportData } from "@/lib/ticket-view";
 import { env } from "@/server/env";
 import { requireArea } from "@/server/auth/guard";
 import { db } from "@/server/db";
-import { ticketToken } from "@/server/orders/service";
+import { ticketShareUrl, ticketToken } from "@/server/orders/service";
 
 export const instant = false;
 
@@ -60,6 +62,28 @@ async function OrderTickets({
     order.items.map((item) => [item.ticketTypeId, item.unitPriceCents]),
   );
 
+  const shareAll = tickets
+    .map((ticket, index) => ({ ticket, index }))
+    .filter(({ ticket }) => ticket.status === "VALIDO")
+    .map(({ ticket, index }) =>
+      ticketExportData({
+        eventTitle: order.event.title,
+        startsAt: order.event.startsAt,
+        venue: order.event.venue,
+        ticketTypeName: ticket.ticketType.name,
+        unitPriceCents: priceByType.get(ticket.ticketTypeId) ?? ticket.ticketType.priceCents,
+        shortCode: ticket.shortCode,
+        status: ticket.status,
+        buyerName: order.buyerName,
+        buyerEmail: "",
+        buyerPhone: "",
+        paymentMethod: order.paymentMethod,
+        qrDataUrl: ticket.qr,
+        index: index + 1,
+        total: tickets.length,
+      }),
+    );
+
   const newSaleHref =
     desde === "admin"
       ? `/admin/ventas?evento=${evento ?? order.eventId}`
@@ -96,6 +120,8 @@ async function OrderTickets({
         </div>
       </div>
 
+      <ShareAllTickets tickets={shareAll} shareUrl={`${env.APP_URL}/compra/${order.id}`} />
+
       <ul className="flex flex-col gap-5">
         {tickets.map((ticket, index) => (
           <IssuedTicketCard
@@ -114,7 +140,7 @@ async function OrderTickets({
             buyerPhone={order.buyerPhone}
             paymentMethod={order.paymentMethod}
             qrDataUrl={ticket.qr}
-            shareUrl={`${env.APP_URL}/compra/${order.id}`}
+            shareUrl={ticketShareUrl(ticket.id)}
             index={index + 1}
             total={tickets.length}
             ticketId={ticket.id}

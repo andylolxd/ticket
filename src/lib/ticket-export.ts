@@ -242,6 +242,26 @@ export async function ticketToPngBlob(data: TicketExportData): Promise<Blob> {
   });
 }
 
+export async function ticketToPngFile(data: TicketExportData): Promise<File> {
+  const blob = await ticketToPngBlob(data);
+  return new File([blob], `entrada-${data.shortCode}.png`, { type: "image/png" });
+}
+
+/** Lo que se comparte puede reenviarse: no lleva email ni teléfono del comprador. */
+export function withoutContact(data: TicketExportData): TicketExportData {
+  return { ...data, buyerEmail: "", buyerPhone: "" };
+}
+
+export function ticketShareText(data: TicketExportData): string {
+  return [
+    `Entrada ${data.index}/${data.total}: ${data.eventTitle}`,
+    `Fecha: ${data.eventDate} · ${data.eventTime} hs`,
+    `Lugar: ${data.venue}`,
+    `${data.ticketTypeName} · ${data.priceLabel} · ${data.shortCode}`,
+    `Titular: ${data.buyerName}`,
+  ].join("\n");
+}
+
 export async function ticketToPdfBlob(data: TicketExportData): Promise<Blob> {
   const canvas = await renderTicketCanvas(data);
   const jpeg = canvas.toDataURL("image/jpeg", 0.94);

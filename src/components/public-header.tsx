@@ -11,7 +11,10 @@ export function PublicHeader() {
           Boletería Mendoza del oeste
         </Link>
         <nav className="flex items-center gap-5 text-sm text-zinc-600">
-          <Link href="/privacidad" className="transition hover:text-zinc-950">
+          <Link href="/#organizadores" className="transition hover:text-zinc-950">
+            Organizadores
+          </Link>
+          <Link href="/privacidad" className="hidden transition hover:text-zinc-950 sm:inline">
             Privacidad
           </Link>
           <Link

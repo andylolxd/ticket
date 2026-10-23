@@ -19,6 +19,16 @@ export function formatDateTime(date: Date): string {
   return `${value.day}/${value.month}/${value.year} · ${hour}:${value.minute}`;
 }
 
+export function formatTimeWithSeconds(date: Date): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+}
+
 export function formatDate(date: Date): string {
   return formatDateTime(date).split(" · ")[0] ?? "";
 }

@@ -67,6 +67,8 @@ export function ArtistsCarousel({ artists }: { artists: ArtistCard[] }) {
                 <img
                   src={artist.photoSrc}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover object-center transition duration-300 group-hover:scale-105"
                 />
               ) : (
